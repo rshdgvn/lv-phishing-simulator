@@ -1,20 +1,27 @@
 from dotenv import load_dotenv
 import os
+from fastapi import FastAPI, Request, Depends
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from sqlalchemy.orm import Session
+from app.services.email_service import send_emails
+from app.models.database import SessionLocal, engine, Base, PhishingTarget
 
 load_dotenv()
 
-from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+Base.metadata.create_all(bind=engine)
 
-from app.services.email_service import send_emails
-
-app = FastAPI(title="School Phishing Simulator")
+app = FastAPI(title="La Verdad Phishing Simulator")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-active_campaign = {} 
-clicked_users = set()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 @app.get("/")
 async def view_dashboard(request: Request):
@@ -24,25 +31,33 @@ async def view_dashboard(request: Request):
         context={"project_name": "Cyber Awareness Tracker"}
     )
 
-@app.post("/api/email")
-async def trigger_email():
+@app.post("/api/send-email")
+async def trigger_email_drill(db: Session = Depends(get_db)): 
     result = send_emails()
     
     if result["status"] == "success":
-        active_campaign.update(result["tracking_data"])
+        for token, email in result["tracking_data"].items():
+            new_target = PhishingTarget(email=email, token=token, clicked=False)
+            db.add(new_target)
+        db.commit() 
+        
         return {"message": result["message"]}
     else:
         return {"message": f"Failed to send: {result['message']}"}
 
 @app.get("/track")
-async def track_click(request: Request, token: str = None): 
-    
-    if token and token in active_campaign:
-        victim_email = active_campaign[token]
-        clicked_users.add(victim_email)
-        print(f"BOOM! Link clicked by: {victim_email}")
-    else:
-        print("Unknown or invalid token clicked.")
+async def track_click(request: Request, token: str = None, db: Session = Depends(get_db)):
+    if token:
+        target = db.query(PhishingTarget).filter(PhishingTarget.token == token).first()
+        
+        if target and not target.clicked:
+            target.clicked = True
+            db.commit()
+            print(f"BOOM! Link clicked by: {target.email}")
+        elif target and target.clicked:
+            print(f"{target.email} clicked the link AGAIN.")
+        else:
+            print("Unknown or invalid token clicked.")
 
     return templates.TemplateResponse(
         request=request,
@@ -51,9 +66,12 @@ async def track_click(request: Request, token: str = None):
     )
 
 @app.get("/api/stats")
-async def get_stats():
+async def get_stats(db: Session = Depends(get_db)):
+    total_sent = db.query(PhishingTarget).count()
+    clicked_targets = db.query(PhishingTarget).filter(PhishingTarget.clicked == True).all()
+    
     return {
-        "emails_sent": len(active_campaign),
-        "total_clicks": len(clicked_users), 
-        "compromised_emails": list(clicked_users)
+        "emails_sent": total_sent,
+        "total_clicks": len(clicked_targets), 
+        "compromised_emails": [target.email for target in clicked_targets]
     }
