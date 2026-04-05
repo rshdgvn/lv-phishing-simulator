@@ -1,9 +1,12 @@
 from dotenv import load_dotenv
 import os
-from fastapi import FastAPI, Request, Depends
+from typing import List
+import base64
+from fastapi import FastAPI, Request, Depends, Response
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
 from app.services.email_service import send_emails
 from app.models.database import SessionLocal, engine, Base, PhishingTarget
 
@@ -22,6 +25,13 @@ def get_db():
     finally:
         db.close()
 
+class TargetItem(BaseModel):
+    name: str
+    email: str
+
+class EmailRequest(BaseModel):
+    targets: List[TargetItem]
+
 
 @app.get("/")
 async def view_dashboard(request: Request):
@@ -32,32 +42,54 @@ async def view_dashboard(request: Request):
     )
 
 @app.post("/api/send-email")
-async def trigger_email_drill(db: Session = Depends(get_db)): 
-    result = send_emails()
+async def trigger_email_drill(payload: EmailRequest, db: Session = Depends(get_db)): 
+    target_list = [{"name": t.name, "email": t.email} for t in payload.targets]
+    
+    if not target_list:
+        return JSONResponse(status_code=400, content={"message": "No valid targets provided."})
+
+    result = send_emails(target_list)
     
     if result["status"] == "success":
-        for token, email in result["tracking_data"].items():
-            new_target = PhishingTarget(email=email, token=token, clicked=False)
-            db.add(new_target)
-        db.commit() 
-        
-        return {"message": result["message"]}
+        try:
+            for token, email in result["tracking_data"].items():
+                existing_target = db.query(PhishingTarget).filter(PhishingTarget.email == email).first()
+                
+                if existing_target:
+                    existing_target.token = token
+                    existing_target.is_sent = True
+                    existing_target.is_opened = False
+                    existing_target.is_clicked = False
+                else:
+                    new_target = PhishingTarget(email=email, token=token, is_sent=True)
+                    db.add(new_target)
+            
+            db.commit() 
+            return {"message": result["message"]}
+            
+        except Exception as e:
+            db.rollback()
+            return JSONResponse(status_code=500, content={"message": "Email sent, but database failed to update."})
     else:
-        return {"message": f"Failed to send: {result['message']}"}
+        return JSONResponse(status_code=400, content={"message": f"Failed to send: {result['message']}"})
+
+@app.get("/pixel/{token}.png")
+async def track_open(token: str, db: Session = Depends(get_db)):
+    target = db.query(PhishingTarget).filter(PhishingTarget.token == token).first()
+    if target and not target.is_opened:
+        target.is_opened = True
+        db.commit()
+    
+    transparent_pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
+    return Response(content=transparent_pixel, media_type="image/png")
 
 @app.get("/track")
 async def track_click(request: Request, token: str = None, db: Session = Depends(get_db)):
     if token:
         target = db.query(PhishingTarget).filter(PhishingTarget.token == token).first()
-        
-        if target and not target.clicked:
-            target.clicked = True
+        if target and not target.is_clicked:
+            target.is_clicked = True
             db.commit()
-            print(f"BOOM! Link clicked by: {target.email}")
-        elif target and target.clicked:
-            print(f"{target.email} clicked the link AGAIN.")
-        else:
-            print("Unknown or invalid token clicked.")
 
     return templates.TemplateResponse(
         request=request,
@@ -67,11 +99,31 @@ async def track_click(request: Request, token: str = None, db: Session = Depends
 
 @app.get("/api/stats")
 async def get_stats(db: Session = Depends(get_db)):
-    total_sent = db.query(PhishingTarget).count()
-    clicked_targets = db.query(PhishingTarget).filter(PhishingTarget.clicked == True).all()
+    targets = db.query(PhishingTarget).all()
+    
+    total_sent = len(targets)
+    total_opened = sum(1 for t in targets if t.is_opened)
+    total_clicked = sum(1 for t in targets if t.is_clicked)
+    
+    click_rate = round((total_clicked / total_sent * 100), 1) if total_sent > 0 else 0
+    open_rate = round((total_opened / total_sent * 100), 1) if total_sent > 0 else 0
+
+    table_data = [
+        {
+            "email": t.email, 
+            "sent": t.is_sent, 
+            "opened": t.is_opened, 
+            "clicked": t.is_clicked
+        } for t in targets
+    ]
     
     return {
-        "emails_sent": total_sent,
-        "total_clicks": len(clicked_targets), 
-        "compromised_emails": [target.email for target in clicked_targets]
+        "analytics": {
+            "total_sent": total_sent,
+            "total_opened": total_opened,
+            "total_clicked": total_clicked,
+            "open_rate": f"{open_rate}%",
+            "click_rate": f"{click_rate}%"
+        },
+        "table": table_data
     }
