@@ -16,4 +16,6 @@ class PhishingTarget(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, index=True)
     token = Column(String, unique=True, index=True)
-    clicked = Column(Boolean, default=False)
+    is_sent = Column(Boolean, default=True)
+    is_opened = Column(Boolean, default=False)
+    is_clicked = Column(Boolean, default=False)
