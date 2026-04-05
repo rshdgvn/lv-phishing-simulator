@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Alert - Phishing Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="max-w-2xl bg-white rounded-lg shadow-xl overflow-hidden">
+        <div class="bg-red-600 p-6 text-center">
+            <svg class="w-16 h-16 text-white mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <h1 class="text-3xl font-bold text-white">Oops! You clicked a simulated phishing link.</h1>
+        </div>
+
+        <div class="p-8">
+            <p class="text-lg text-gray-700 mb-6">
+                Don't worry, you are not in trouble! This was an authorized cybersecurity drill conducted by the IT Department. However, if this had been a real attack, your credentials or school data could have been compromised.
+            </p>
+
+            <h2 class="text-xl font-bold text-gray-900 mb-4">How to spot a phishing email next time:</h2>
+            
+            <ul class="space-y-4">
+                <li class="flex items-start">
+                    <span class="text-red-500 mr-2">🚩</span>
+                    <div>
+                        <strong>Check the sender's actual email address.</strong> Scammers can fake the display name, but the underlying email address usually looks strange.
+                    </div>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-red-500 mr-2">🚩</span>
+                    <div>
+                        <strong>Hover before you click.</strong> Hover your mouse over any links to see the real destination URL before clicking.
+                    </div>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-red-500 mr-2">🚩</span>
+                    <div>
+                        <strong>Beware of urgency.</strong> Phishing emails try to panic you (e.g., "Your password expires in 2 hours!").
+                    </div>
+                </li>
+            </ul>
+
+            <div class="mt-8 p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700">
+                <p class="font-semibold">Remember: IT will never ask you to verify your password via a random email link.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
