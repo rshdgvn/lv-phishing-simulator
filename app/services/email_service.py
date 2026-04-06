@@ -3,6 +3,8 @@ from email.message import EmailMessage
 import ssl
 import os
 import secrets
+from urllib.parse import quote
+import time
 
 def send_emails(targets: list):
     BASE_URL = os.getenv("BASE_URL")
@@ -29,8 +31,9 @@ def send_emails(targets: list):
                 msg['From'] = f"{SENDER_NAME} <{SENDER_EMAIL}>"
                 msg['To'] = person["email"]
 
-                tracking_link = f"{BASE_URL}/track?token={unique_token}"
-                pixel_link = f"{BASE_URL}/pixel/{unique_token}.png"
+                tracking_link = f"{BASE_URL}/track?token={quote(unique_token)}"
+                # Use the dedicated open-tracking endpoint and add a cache buster.
+                pixel_link = f"{BASE_URL}/track/open?e={quote(unique_token)}&ts={int(time.time())}"
 
                 # Redesigned LMS Phishing Template
                 html_content = f"""
