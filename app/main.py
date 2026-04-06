@@ -9,6 +9,10 @@ from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 from app.services.email_service import send_emails
 from app.models.database import SessionLocal, engine, Base, PhishingTarget
+from app.websocket import router as websocket_router, push_tracking_event, broadcast_stats_snapshot
+from app.track import router as track_router
+from fastapi.staticfiles import StaticFiles
+import uvicorn
 
 load_dotenv()
 
@@ -16,7 +20,11 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="La Verdad Phishing Simulator")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "static/templates"))
+app.include_router(websocket_router)
+app.include_router(track_router)
+
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 def get_db():
     db = SessionLocal()
@@ -64,7 +72,11 @@ async def trigger_email_drill(payload: EmailRequest, db: Session = Depends(get_d
                     new_target = PhishingTarget(email=email, token=token, is_sent=True)
                     db.add(new_target)
             
-            db.commit() 
+            db.commit()
+
+            for email in result["tracking_data"].values():
+                await push_tracking_event("sent", email)
+            await broadcast_stats_snapshot()
             return {"message": result["message"]}
             
         except Exception as e:
@@ -79,6 +91,8 @@ async def track_open(token: str, db: Session = Depends(get_db)):
     if target and not target.is_opened:
         target.is_opened = True
         db.commit()
+        await push_tracking_event("opened", target.email)
+        await broadcast_stats_snapshot()
     
     transparent_pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
     return Response(content=transparent_pixel, media_type="image/png")
@@ -90,6 +104,8 @@ async def track_click(request: Request, token: str = None, db: Session = Depends
         if target and not target.is_clicked:
             target.is_clicked = True
             db.commit()
+            await push_tracking_event("clicked", target.email)
+            await broadcast_stats_snapshot()
 
     return templates.TemplateResponse(
         request=request,
@@ -127,3 +143,9 @@ async def get_stats(db: Session = Depends(get_db)):
         },
         "table": table_data
     }
+    
+# -------------------------
+# Run app
+# -------------------------
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
