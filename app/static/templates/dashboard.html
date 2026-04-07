@@ -80,12 +80,19 @@
 
       <div class="divider"></div>
 
-      <div>
-        <button class="btn btn-primary" id="sendBtn" disabled onclick="sendCampaign()">
-          <i class="fas fa-paper-plane"></i> Send Simulation
-        </button>
-        <p id="sendFeedback"></p>
+      <div style="margin-bottom:12px;">
+        <div class="sec-label" style="margin-bottom:8px;">Email Version</div>
+        <div class="version-pill-wrap">
+          <input type="radio" name="versionSelect" id="versionV1" value="v1" checked>
+          <label for="versionV1">V1<br><span style="font-weight:400;opacity:.75;">Direct Link</span></label>
+          <input type="radio" name="versionSelect" id="versionV2" value="v2">
+          <label for="versionV2">V2<br><span style="font-weight:400;opacity:.75;">Cred Harvest</span></label>
+        </div>
       </div>
+
+<button id="sendBtn" class="btn btn-primary" onclick="sendCampaign()">
+    <i class="fas fa-paper-plane"></i> Send Simulation
+</button>
 
       <div class="info-note">
         <strong>Authorized drill only.</strong> Operated by the LVCC Cybersecurity Committee for educational phishing awareness.
@@ -98,9 +105,14 @@
           <div class="stat-label">Total Sent</div>
           <div class="stat-val" id="statSent">—</div>
         </div>
-        <div class="stat">
+        <!-- Opened stat removed — tracking disabled to avoid misleading data -->
+        <!-- <div class="stat">
           <div class="stat-label">Opened</div>
           <div class="stat-val c-blue" id="statOpened">—</div>
+        </div> -->
+        <div class="stat">
+          <div class="stat-label">Compromised</div>
+          <div class="stat-val c-orange" id="statCompromised">—</div>
         </div>
         <div class="stat">
           <div class="stat-label">Clicked</div>
@@ -124,8 +136,9 @@
             <tr>
               <th>Email</th>
               <th>Sent</th>
-              <th>Opened</th>
+              <!-- <th>Opened</th> -->
               <th>Clicked</th>
+              <th>Compromised</th>
             </tr>
           </thead>
           <tbody id="tableBody">

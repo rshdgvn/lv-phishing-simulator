@@ -41,7 +41,7 @@ function renderList(){
     const list=document.getElementById("targetList");
     const btn=document.getElementById("sendBtn");
     if(!targets.length){
-        list.innerHTML=`<div class="empty-state"><i class="fas fa-users"></i>No targets added yet.</div>`;
+        list.innerHTML='<div class="empty-state"><i class="fas fa-users"></i>No targets added yet.</div>';
         btn.disabled=true;return;
     }
     list.innerHTML=targets.map((t,i)=>`
@@ -61,20 +61,24 @@ async function fetchStats(){
         const res=await fetch("/api/stats");
         const data=await res.json();
         document.getElementById("statSent").textContent=data.analytics.total_sent;
-        document.getElementById("statOpened").textContent=data.analytics.total_opened;
+        // OPENED TRACKING DISABLED — data exists but not displayed to avoid misleading numbers
+        // document.getElementById("statOpened").textContent=data.analytics.total_opened;
         document.getElementById("statClicked").textContent=data.analytics.total_clicked;
         document.getElementById("statRate").textContent=data.analytics.click_rate;
+        if(document.getElementById("statCompromised"))document.getElementById("statCompromised").textContent=data.analytics.total_compromised ?? "—";
         const tbody=document.getElementById("tableBody");
         if(!data.table.length){
-        tbody.innerHTML=`<tr class="empty-row"><td colspan="4"><i class="fas fa-inbox" style="display:block;font-size:22px;margin-bottom:8px;opacity:.2;"></i>No data yet.</td></tr>`;
-        return;
+            tbody.innerHTML='<tr class="empty-row"><td colspan="4"><i class="fas fa-inbox" style="display:block;font-size:22px;margin-bottom:8px;opacity:.2;"></i>No data yet.</td></tr>';
+            return;
         }
         tbody.innerHTML=data.table.map(t=>`
         <tr>
             <td>${t.email}</td>
             <td><span class="tag ${t.sent?'tag-yes':'tag-no'}">${t.sent?'✓ Sent':'–'}</span></td>
-            <td><span class="tag ${t.opened?'tag-yes':'tag-no'}">${t.opened?'✓ Opened':'–'}</span></td>
+            <!-- Opened column commented out — tracking disabled to avoid misleading data -->
+            <!-- <td><span class="tag ${t.opened?'tag-yes':'tag-no'}">${t.opened?'✓ Opened':'–'}</span></td> -->
             <td><span class="tag ${t.clicked?'tag-click':'tag-no'}">${t.clicked?'✓ Clicked':'–'}</span></td>
+            <td><span class="tag ${t.compromised?'tag-compromised':'tag-no'}">${t.compromised?'⚠ Yes':'–'}</span></td>
         </tr>
         `).join("");
     }catch(e){console.error(e);}
@@ -87,7 +91,7 @@ function scheduleStatsRefresh(){
 
 function handleRealtimeMessage(msg){
     if(!msg||!msg.type) return;
-    if(["sent","opened","clicked","stats_update"].includes(msg.type)){
+    if(["sent","opened","clicked","compromised","stats_update"].includes(msg.type)){
         scheduleStatsRefresh();
     }
 }
@@ -106,22 +110,32 @@ function setupRealtime(){
 }
 
 async function sendCampaign(){
-    if(!targets.length)return;
-    const btn=document.getElementById("sendBtn");
-    btn.innerHTML=`<i class="fas fa-spinner fa-spin"></i> Sending…`;
-    btn.disabled=true;
+    if(!targets.length) return;
+    const btn = document.getElementById("sendBtn");
+    const selectedVersion = (document.querySelector('input[name="versionSelect"]:checked')||{value:"v1"}).value;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+    btn.disabled = true;
     try{
-        const res=await fetch("/api/send-email",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({targets})
+        const res = await fetch("/api/send-email", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                targets: targets,
+                version: selectedVersion
+            })
         });
-        const result=await res.json();
-        if(res.ok&&result.message.includes("Sent to")){
-        showFeedback("Campaign sent!","var(--success)");
-        targets=[];saveTargets();renderList();fetchStats();
-        } else showFeedback(result.message,"var(--danger)");
-    }catch{showFeedback("Connection failed.","var(--danger)");}
-    btn.innerHTML=`<i class="fas fa-paper-plane"></i> Send Simulation`;
+        const result = await res.json();
+        if(res.ok && result.message.includes("Sent to")){
+            showFeedback("Campaign sent!","var(--success)");
+            fetchStats();
+        } else {
+            showFeedback(result.message,"var(--danger)");
+        }
+    } catch {
+        showFeedback("Connection failed.","var(--danger)");
+    }
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Simulation';
+    btn.disabled = false;
 }
 
 function showFeedback(msg,color){
