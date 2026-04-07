@@ -127,9 +127,10 @@
       <div class="table-card">
         <div class="table-head">
           <h2>Target Engagement</h2>
-          <button class="refresh-btn" onclick="fetchStats()">
-            <i class="fas fa-rotate-right"></i> Refresh
-          </button>
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="tableSearch" placeholder="Search email..." onkeyup="filterTable()">
+          </div>
         </div>
         <table>
           <thead>

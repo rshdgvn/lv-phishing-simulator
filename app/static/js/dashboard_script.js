@@ -61,26 +61,27 @@ async function fetchStats(){
         const res=await fetch("/api/stats");
         const data=await res.json();
         document.getElementById("statSent").textContent=data.analytics.total_sent;
-        // OPENED TRACKING DISABLED — data exists but not displayed to avoid misleading numbers
-        // document.getElementById("statOpened").textContent=data.analytics.total_opened;
         document.getElementById("statClicked").textContent=data.analytics.total_clicked;
         document.getElementById("statRate").textContent=data.analytics.click_rate;
         if(document.getElementById("statCompromised"))document.getElementById("statCompromised").textContent=data.analytics.total_compromised ?? "—";
+        
         const tbody=document.getElementById("tableBody");
         if(!data.table.length){
             tbody.innerHTML='<tr class="empty-row"><td colspan="4"><i class="fas fa-inbox" style="display:block;font-size:22px;margin-bottom:8px;opacity:.2;"></i>No data yet.</td></tr>';
             return;
         }
         tbody.innerHTML=data.table.map(t=>`
-        <tr>
+         <tr>
             <td>${t.email}</td>
             <td><span class="tag ${t.sent?'tag-yes':'tag-no'}">${t.sent?'✓ Sent':'–'}</span></td>
-            <!-- Opened column commented out — tracking disabled to avoid misleading data -->
             <!-- <td><span class="tag ${t.opened?'tag-yes':'tag-no'}">${t.opened?'✓ Opened':'–'}</span></td> -->
             <td><span class="tag ${t.clicked?'tag-click':'tag-no'}">${t.clicked?'✓ Clicked':'–'}</span></td>
             <td><span class="tag ${t.compromised?'tag-compromised':'tag-no'}">${t.compromised?'⚠ Yes':'–'}</span></td>
         </tr>
         `).join("");
+
+        filterTable(); 
+        
     }catch(e){console.error(e);}
 }
 
@@ -113,9 +114,11 @@ async function sendCampaign(){
     if(!targets.length) return;
     const btn = document.getElementById("sendBtn");
     const selectedVersion = (document.querySelector('input[name="versionSelect"]:checked')||{value:"v1"}).value;
+    
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
     btn.disabled = true;
-    try{
+    
+    try {
         const res = await fetch("/api/send-email", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
@@ -125,17 +128,35 @@ async function sendCampaign(){
             })
         });
         const result = await res.json();
+        
         if(res.ok && result.message.includes("Sent to")){
             showFeedback("Campaign sent!","var(--success)");
+            targets = [];
+            saveTargets();
             fetchStats();
         } else {
             showFeedback(result.message,"var(--danger)");
         }
     } catch {
         showFeedback("Connection failed.","var(--danger)");
+    } finally {
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Simulation';
+        renderList(); 
     }
-    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Simulation';
-    btn.disabled = false;
+}
+
+
+function filterTable() {
+    const input = document.getElementById("tableSearch").value.toLowerCase();
+    const rows = document.querySelectorAll("#tableBody tr:not(.empty-row)");
+    
+    rows.forEach(row => {
+        const emailCell = row.querySelector("td:first-child"); 
+        if (emailCell) {
+            const emailText = emailCell.textContent.toLowerCase();
+            row.style.display = emailText.includes(input) ? "" : "none";
+        }
+    });
 }
 
 function showFeedback(msg,color){

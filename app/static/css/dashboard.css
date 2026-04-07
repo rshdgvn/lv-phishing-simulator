@@ -289,3 +289,29 @@ tbody td:not(:first-child){text-align:center;}
     background:var(--accent-lt);
     color:var(--accent);
 }
+
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.search-box i {
+    position: absolute;
+    left: 12px;
+    color: var(--muted);
+    font-size: 12px;
+}
+.search-box input {
+    padding: 8px 12px 8px 32px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: var(--font);
+    outline: none;
+    width: 220px;
+    background: var(--bg);
+    transition: border-color 0.18s;
+}
+.search-box input:focus {
+    border-color: var(--accent);
+}
