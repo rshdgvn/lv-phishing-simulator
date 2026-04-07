@@ -16,6 +16,7 @@ import uvicorn
 import jwt 
 from datetime import datetime, timedelta 
 import hashlib
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -26,6 +27,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "static/templates"))
 app.include_router(websocket_router)
 app.include_router(track_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -173,11 +182,15 @@ async def track_click(request: Request, token: str = None, v: str = "v1", db: Se
             target.is_opened = True 
             db.commit()
 
+            await push_tracking_event("clicked", target.email)
+            await broadcast_stats_snapshot()
+
     if v == "v2":
         redirect_url = f"{EXTERNAL_LMS_URL}?token={token}" if token else EXTERNAL_LMS_URL
         return RedirectResponse(url=redirect_url)
     else:
-        return RedirectResponse(url=EXTERNAL_AWARENESS_URL)
+        return RedirectResponse(url=f"{EXTERNAL_AWARENESS_URL}?token={token}", status_code=303)
+
 
 @app.post("/track/login")
 async def track_login_submission(
@@ -201,7 +214,7 @@ async def track_login_submission(
             await push_tracking_event("compromised", target.email)
             await broadcast_stats_snapshot()
             
-    return RedirectResponse(url=EXTERNAL_AWARENESS_URL, status_code=303)
+    return RedirectResponse(url=f"{EXTERNAL_AWARENESS_URL}?token={token}", status_code=303)
 
 @app.get("/track/login/google")
 async def track_google_login(request: Request, token: str = None, db: Session = Depends(get_db)):
@@ -213,7 +226,27 @@ async def track_google_login(request: Request, token: str = None, db: Session = 
             await push_tracking_event("compromised", target.email)
             await broadcast_stats_snapshot()
             
-    return RedirectResponse(url=EXTERNAL_AWARENESS_URL)
+    return RedirectResponse(url=f"{EXTERNAL_AWARENESS_URL}?token={token}", status_code=303)
+
+
+@app.post("/track/awareness")
+async def track_awareness_acknowledgement(
+    token: str = Form(None), 
+    db: Session = Depends(get_db)
+):
+    if token:
+        target = db.query(PhishingTarget).filter(PhishingTarget.token == token).first()
+        if target and not target.is_aware:
+            target.is_aware = True
+            db.commit()
+            
+            await push_tracking_event("aware", target.email)
+            await broadcast_stats_snapshot()
+            
+            return {"status": "success", "message": "Awareness logged"}
+            
+    return {"status": "ignored", "message": "No valid token found"}
+
 
 @app.get("/api/stats")
 async def get_stats(db: Session = Depends(get_db), _ = Depends(verify_session)):
@@ -223,10 +256,13 @@ async def get_stats(db: Session = Depends(get_db), _ = Depends(verify_session)):
     total_opened = sum(1 for t in targets if t.is_opened)
     total_clicked = sum(1 for t in targets if t.is_clicked)
     total_compromised = sum(1 for t in targets if t.is_compromised)
+    total_aware = sum(1 for t in targets if t.is_aware)
     
     click_rate = round((total_clicked / total_sent * 100), 1) if total_sent > 0 else 0
     open_rate = round((total_opened / total_sent * 100), 1) if total_sent > 0 else 0
     compromised_rate = round((total_compromised / total_sent * 100), 1) if total_sent > 0 else 0
+    aware_rate = round((total_aware / total_sent * 100), 1) if total_sent > 0 else 0
+
 
     table_data = [
         {
@@ -234,7 +270,8 @@ async def get_stats(db: Session = Depends(get_db), _ = Depends(verify_session)):
             "sent": t.is_sent, 
             "opened": t.is_opened, 
             "clicked": t.is_clicked,
-            "compromised": t.is_compromised
+            "compromised": t.is_compromised,
+            "aware": t.is_aware
         } for t in targets
     ]
     
@@ -244,6 +281,7 @@ async def get_stats(db: Session = Depends(get_db), _ = Depends(verify_session)):
             "total_opened": total_opened,
             "total_clicked": total_clicked,
             "total_compromised": total_compromised,
+            "total_aware": total_aware,
             "open_rate": f"{open_rate}%",
             "click_rate": f"{click_rate}%",
             "compromised_rate": f"{compromised_rate}%"
