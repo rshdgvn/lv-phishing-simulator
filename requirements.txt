@@ -7,3 +7,4 @@ sqlalchemy
 python-multipart
 pydantic
 PyJWT
+gunicorn
