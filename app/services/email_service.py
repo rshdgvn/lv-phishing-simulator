@@ -58,7 +58,7 @@ def send_emails(targets: list, version: str = "v1"):
                         <div class="blue-bar"></div>
                         
                         <div class="logo-container">
-                            <img src="https://via.placeholder.com/120x120.png?text=LMS+Logo" alt="LMS Logo" class="logo">
+                            <img src="../static/templates/lvcc-logo.png" alt="LMS Logo" class="logo">
                         </div>
                         
                         <div class="header-text">LMS Account Verification</div>
@@ -84,7 +84,7 @@ def send_emails(targets: list, version: str = "v1"):
 
                             <p>Best regards,<br>
                             IT Support & Systems Administration<br>
-                            Email: <span class="highlight">ithelpdesk@institution.edu</span></p>
+                            Email: <span class="highlight">info@laverdad.edu.ph</span></p>
 
                             <p class="footer">***This is an automated system security notification. Please do not reply.</p>
                         </div>
