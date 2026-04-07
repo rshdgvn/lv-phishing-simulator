@@ -20,3 +20,4 @@ class PhishingTarget(Base):
     is_opened = Column(Boolean, default=False)
     is_clicked = Column(Boolean, default=False)
     is_compromised = Column(Boolean, default=False)
+    is_aware = Column(Boolean, default=False)

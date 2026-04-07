@@ -56,9 +56,9 @@ def send_emails(targets: list, version: str = "v1"):
                 <body>
                     <div class="container">
                         <div class="blue-bar"></div>
-                        
+
                         <div class="logo-container">
-                            <img src="../static/templates/lvcc-logo.png" alt="LMS Logo" class="logo">
+                            <img class="logo" src="https://lms.laverdad.edu.ph/pluginfile.php/1/core_admin/logo/0x200/1760791385/lvcc_logo.png" alt="LVCC Logo" />
                         </div>
                         
                         <div class="header-text">LMS Account Verification</div>

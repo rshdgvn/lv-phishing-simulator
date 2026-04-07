@@ -45,27 +45,27 @@ async def track_open(e: str, db: Session = Depends(get_db)):
     return Response(content=TRANSPARENT_GIF, media_type="image/gif")
 
 
-@router.get("/track/click")
-async def track_click(e: str, r: str = "/", db: Session = Depends(get_db)):
-    """
-    Track click by encoded email/token (`e`), then redirect.
-    """
-    key = unquote(e)
-    redirect = unquote(r)
-    target = (
-        db.query(PhishingTarget).filter(PhishingTarget.token == key).first()
-        or db.query(PhishingTarget).filter(PhishingTarget.email == key).first()
-    )
+# @router.get("/track/click")
+# async def track_click(e: str, r: str = "/", db: Session = Depends(get_db)):
+#     """
+#     Track click by encoded email/token (`e`), then redirect.
+#     """
+#     key = unquote(e)
+#     redirect = unquote(r)
+#     target = (
+#         db.query(PhishingTarget).filter(PhishingTarget.token == key).first()
+#         or db.query(PhishingTarget).filter(PhishingTarget.email == key).first()
+#     )
 
-    if target and not target.is_clicked:
-        target.is_clicked = True
-        if not target.is_opened:
-            target.is_opened = True
-        db.commit()
-        await push_tracking_event("clicked", target.email)
-        await broadcast_stats_snapshot()
+#     if target and not target.is_clicked:
+#         target.is_clicked = True
+#         if not target.is_opened:
+#             target.is_opened = True
+#         db.commit()
+#         await push_tracking_event("clicked", target.email)
+#         await broadcast_stats_snapshot()
 
-    return RedirectResponse(url=redirect)
+#     return RedirectResponse(url=redirect)
 
 
 async def notify_sent(email: str):

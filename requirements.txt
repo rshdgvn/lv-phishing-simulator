@@ -5,3 +5,5 @@ websockets
 python-dotenv
 sqlalchemy
 python-multipart
+pydantic
+PyJWT
