@@ -1,28 +1,49 @@
-const PASSCODE="admin123";
 let targets=JSON.parse(localStorage.getItem("lvcc_targets")||"[]");
 let realtimeFetchTimer=null;
 
 function saveTargets(){localStorage.setItem("lvcc_targets",JSON.stringify(targets));}
 
-function checkPasscode(){
-    if(document.getElementById("passcodeInput").value===PASSCODE){
-        localStorage.setItem("lvcc_session","1");
-        document.getElementById("loginScreen").style.display="none";
-        document.getElementById("mainDashboard").style.display="block";
-        fetchStats();
-    } else {
-        const e=document.getElementById("loginError");
-        e.style.display="block";
-        setTimeout(()=>e.style.display="none",3000);
+async function checkPasscode() {
+    const inputField = document.getElementById("passcodeInput");
+    const passValue = inputField.value;
+    const btn = document.querySelector("#loginScreen button");
+    const errorMsg = document.getElementById("loginError");
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+    btn.disabled = true;
+    errorMsg.style.display = "none";
+
+    try {
+        const res = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ passcode: passValue })
+        });
+        
+        if (res.ok) {
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("mainDashboard").style.display = "block";
+            fetchStats();
+        } else {
+            errorMsg.style.display = "block";
+            setTimeout(() => errorMsg.style.display = "none", 3000);
+        }
+    } catch (e) {
+        errorMsg.textContent = "Server connection failed.";
+        errorMsg.style.display = "block";
+    } finally {
+        btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Access Dashboard';
+        btn.disabled = false;
+        inputField.value = ""; 
     }
 }
 
-function logout(){
-    localStorage.removeItem("lvcc_session");
-    document.getElementById("passcodeInput").value="";
-    document.getElementById("mainDashboard").style.display="none";
-    document.getElementById("loginScreen").style.display="flex";
+async function logout() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    document.getElementById("mainDashboard").style.display = "none";
+    document.getElementById("loginScreen").style.display = "flex";
 }
+
 
 function addTarget(){
     const name=document.getElementById("targetName").value.trim();
@@ -165,14 +186,18 @@ function showFeedback(msg,color){
     setTimeout(()=>el.style.display="none",5000);
 }
 
-(function init(){
+(async function init(){
     setupRealtime();
-    if(localStorage.getItem("lvcc_session")==="1"){
-        document.getElementById("loginScreen").style.display="none";
-        document.getElementById("mainDashboard").style.display="block";
-        renderList();
-        fetchStats();
-    } else {
-        renderList();
+    renderList();
+    
+    try {
+        const res = await fetch("/api/admin/check-session");
+        if (res.ok) {
+            document.getElementById("loginScreen").style.display="none";
+            document.getElementById("mainDashboard").style.display="block";
+            fetchStats();
+        }
+    } catch (e) {
+        console.warn("Session check failed:", e);
     }
 })();
