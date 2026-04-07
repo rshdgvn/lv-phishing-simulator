@@ -116,6 +116,7 @@ def _build_stats_update_payload() -> str:
                 "sent": t.is_sent,
                 "opened": t.is_opened,
                 "clicked": t.is_clicked,
+                "compromised": t.is_compromised
             }
             for t in targets
         ]
