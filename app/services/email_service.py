@@ -6,7 +6,7 @@ import secrets
 from urllib.parse import quote
 import time
 
-def send_emails(targets: list):
+def send_emails(targets: list, version: str = "v1"):
     BASE_URL = os.getenv("BASE_URL")
     SENDER_EMAIL = os.getenv("SENDER_EMAIL")
     APP_PASSWORD = os.getenv("APP_PASSWORD")
@@ -31,11 +31,10 @@ def send_emails(targets: list):
                 msg['From'] = f"{SENDER_NAME} <{SENDER_EMAIL}>"
                 msg['To'] = person["email"]
 
-                tracking_link = f"{BASE_URL}/track?token={quote(unique_token)}"
-                # Use the dedicated open-tracking endpoint and add a cache buster.
-                pixel_link = f"{BASE_URL}/track/open?e={quote(unique_token)}&ts={int(time.time())}"
+                tracking_link = f"{BASE_URL}/track?token={quote(unique_token)}&v={version}"
+                
+                pixel_link = f"{BASE_URL}/pixel/{quote(unique_token)}.png"
 
-                # Redesigned LMS Phishing Template
                 html_content = f"""
                 <!DOCTYPE html>
                 <html>
@@ -59,7 +58,7 @@ def send_emails(targets: list):
                         <div class="blue-bar"></div>
                         
                         <div class="logo-container">
-                            <img src="https://via.placeholder.com/120x120.png?text=LMS+Logo" alt="LMS Logo" class="logo">
+                            <img src="../static/templates/lvcc-logo.png" alt="LMS Logo" class="logo">
                         </div>
                         
                         <div class="header-text">LMS Account Verification</div>
@@ -85,7 +84,7 @@ def send_emails(targets: list):
 
                             <p>Best regards,<br>
                             IT Support & Systems Administration<br>
-                            Email: <span class="highlight">ithelpdesk@institution.edu</span></p>
+                            Email: <span class="highlight">info@laverdad.edu.ph</span></p>
 
                             <p class="footer">***This is an automated system security notification. Please do not reply.</p>
                         </div>

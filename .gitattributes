@@ -1,1 +1,2 @@
-app/templates/*.html linguist-detectable=false
+app/static/templates/*.html linguist-detectable=false
+app/static/templates/*.css linguist-detectable=false

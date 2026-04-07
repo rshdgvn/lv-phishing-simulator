@@ -4,3 +4,4 @@ jinja2
 websockets
 python-dotenv
 sqlalchemy
+python-multipart

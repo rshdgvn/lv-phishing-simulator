@@ -108,11 +108,44 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .target-scroll::-webkit-scrollbar{width:3px;}
 .target-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
-.target-item{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:9px 11px;border:1px solid var(--border);border-radius:10px;
-    margin-bottom:7px;background:var(--bg);
-    animation:fadeUp .18s ease;
+.target-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 7px;
+    background: var(--bg);
+    animation: fadeUp .18s ease;
+
+    gap: 8px; /* add spacing */
+}
+
+.target-info {
+    flex: 1;          /* take available space */
+    min-width: 0;     /* IMPORTANT: allows shrinking */
+}
+
+.target-info .name,
+.target-info .email {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* shows ... */
+}
+
+.target-info .name {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.target-info .email {
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+.remove-btn {
+    flex-shrink: 0; 
 }
 @keyframes fadeUp{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
 .target-info .name{font-size:13px;font-weight:600;}
@@ -188,4 +221,97 @@ tbody td:not(:first-child){text-align:center;}
     .main-grid{grid-template-columns:1fr;}
     .sidebar{border-right:none;border-bottom:1px solid var(--border);}
     .stats-row{grid-template-columns:repeat(2,1fr);}
+}
+
+.version-select {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 14px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color .18s;
+    cursor: pointer;
+    
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%231a1a18%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px top 50%;
+    background-size: 10px auto;
+}
+
+.version-select:focus {
+    border-color: var(--accent);
+}
+.tag-compromised{background:#fff3e0;color:#c05621;border:1px solid #f6c37f;}
+
+.version-pill-wrap{
+    display:flex;
+    background:var(--bg);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius);
+    padding:4px;
+    gap:4px;
+    width:100%;
+    box-sizing:border-box;
+}
+.version-pill-wrap input[type="radio"]{
+    position:absolute;
+    opacity:0;
+    width:0;
+    height:0;
+}
+.version-pill-wrap label{
+    flex:1;
+    text-align:center;
+    padding:9px 8px;
+    border-radius:8px;
+    font-family:var(--font);
+    font-size:12px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+    transition:background .16s,color .16s,box-shadow .16s;
+    line-height:1.35;
+    user-select:none;
+}
+.version-pill-wrap input[type="radio"]:checked + label{
+    background:var(--accent);
+    color:#fff;
+    box-shadow:0 2px 8px rgba(45,91,227,.22);
+}
+.version-pill-wrap label:hover:not(.version-pill-wrap input:checked + label){
+    background:var(--accent-lt);
+    color:var(--accent);
+}
+
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.search-box i {
+    position: absolute;
+    left: 12px;
+    color: var(--muted);
+    font-size: 12px;
+}
+.search-box input {
+    padding: 8px 12px 8px 32px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: var(--font);
+    outline: none;
+    width: 220px;
+    background: var(--bg);
+    transition: border-color 0.18s;
+}
+.search-box input:focus {
+    border-color: var(--accent);
 }
