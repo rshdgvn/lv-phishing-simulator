@@ -1,73 +1,113 @@
-from urllib.parse import unquote
-from fastapi import APIRouter, Depends
-from fastapi.responses import Response, RedirectResponse
-from sqlalchemy.orm import Session
-from app.models.database import SessionLocal, PhishingTarget
+import base64
+from fastapi import APIRouter, Request, Response
+from fastapi.responses import RedirectResponse
+from app.models.database import supabase
 from app.websocket import push_tracking_event, broadcast_stats_snapshot
 
 router = APIRouter()
 
-# 1x1 transparent GIF used by /track/open
-TRANSPARENT_GIF = (
-    b"\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00"
-    b"\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x00\x00\x00\x00"
-    b"\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02"
-    b"\x44\x01\x00\x3b"
-)
+EXTERNAL_AWARENESS_URL = "https://lv-cybersecurity-awareness.vercel.app/"
+EXTERNAL_LMS_URL = "https://lms-lvcc-edu-ph.vercel.app/"
 
+@router.get("/pixel/{token}.png")
+async def track_open(token: str):
+    res = supabase.table("phishing_targets").select("*").eq("token", token).execute()
+    if res.data:
+        target = res.data[0]
+        if not target["is_opened"]:
+            supabase.table("phishing_targets").update({"is_opened": True}).eq("token", token).execute()
+            await push_tracking_event("opened", target["email"])
+            await broadcast_stats_snapshot()
+            
+    transparent_pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
+    return Response(content=transparent_pixel, media_type="image/png")
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+@router.get("/track")
+async def track_click(request: Request, token: str = None, v: str = "v1"):
+    if token:
+        res = supabase.table("phishing_targets").select("*").eq("token", token).execute()
+        if res.data:
+            target = res.data[0]
+            if not target["is_clicked"]:
+                supabase.table("phishing_targets").update({
+                    "is_clicked": True, 
+                    "is_opened": True
+                }).eq("token", token).execute()
+                await push_tracking_event("clicked", target["email"])
+                await broadcast_stats_snapshot()
 
+    if v == "v2":
+        redirect_url = f"{EXTERNAL_LMS_URL}?token={token}" if token else EXTERNAL_LMS_URL
+        return RedirectResponse(url=redirect_url)
+    else:
+        return RedirectResponse(url=f"{EXTERNAL_AWARENESS_URL}?token={token}", status_code=303)
 
-@router.get("/track/open")
-async def track_open(e: str, db: Session = Depends(get_db)):
-    """
-    Track open by encoded email (`e`) or token value.
-    Returns a 1x1 GIF for email clients.
-    """
-    key = unquote(e)
-    target = (
-        db.query(PhishingTarget).filter(PhishingTarget.token == key).first()
-        or db.query(PhishingTarget).filter(PhishingTarget.email == key).first()
-    )
+@router.post("/track/login")
+async def track_login_submission(request: Request):
+    token, username, password = None, None, None
 
-    if target and not target.is_opened:
-        target.is_opened = True
-        db.commit()
-        await push_tracking_event("opened", target.email)
-        await broadcast_stats_snapshot()
+    # Handle both JSON payloads (React/Fetch) and Form Data (HTML Forms)
+    if request.headers.get("content-type", "").startswith("application/json"):
+        data = await request.json()
+        token = data.get("token")
+        username = data.get("username")
+        password = data.get("password")
+    else:
+        form = await request.form()
+        token = form.get("token")
+        username = form.get("username")
+        password = form.get("password")
 
-    return Response(content=TRANSPARENT_GIF, media_type="image/gif")
+    safe_username = username.strip() if username else ""
+    
+    if not safe_username or not password or not safe_username.endswith("laverdad.edu.ph"):
+        error_url = f"{EXTERNAL_LMS_URL}?token={token}&error=invalid" if token else f"{EXTERNAL_LMS_URL}?error=invalid"
+        return RedirectResponse(url=error_url, status_code=303) 
+    
+    if token:
+        res = supabase.table("phishing_targets").select("*").eq("token", token).execute()
+        if res.data:
+            target = res.data[0]
+            if not target["is_compromised"]:
+                supabase.table("phishing_targets").update({"is_compromised": True}).eq("token", token).execute()
+                await push_tracking_event("compromised", target["email"])
+                await broadcast_stats_snapshot()
+            
+    return RedirectResponse(url=f"{EXTERNAL_AWARENESS_URL}?token={token}", status_code=303)
 
+@router.get("/track/login/google")
+async def track_google_login(request: Request, token: str = None):
+    if token:
+        res = supabase.table("phishing_targets").select("*").eq("token", token).execute()
+        if res.data:
+            target = res.data[0]
+            if not target["is_compromised"]:
+                supabase.table("phishing_targets").update({"is_compromised": True}).eq("token", token).execute()
+                await push_tracking_event("compromised", target["email"])
+                await broadcast_stats_snapshot()
+            
+    return RedirectResponse(url=f"{EXTERNAL_AWARENESS_URL}?token={token}", status_code=303)
 
-# @router.get("/track/click")
-# async def track_click(e: str, r: str = "/", db: Session = Depends(get_db)):
-#     """
-#     Track click by encoded email/token (`e`), then redirect.
-#     """
-#     key = unquote(e)
-#     redirect = unquote(r)
-#     target = (
-#         db.query(PhishingTarget).filter(PhishingTarget.token == key).first()
-#         or db.query(PhishingTarget).filter(PhishingTarget.email == key).first()
-#     )
+@router.post("/track/awareness")
+async def track_awareness_acknowledgement(request: Request):
+    # Same JSON/Form fix for awareness tracking
+    token = None
+    if request.headers.get("content-type", "").startswith("application/json"):
+        data = await request.json()
+        token = data.get("token")
+    else:
+        form = await request.form()
+        token = form.get("token")
 
-#     if target and not target.is_clicked:
-#         target.is_clicked = True
-#         if not target.is_opened:
-#             target.is_opened = True
-#         db.commit()
-#         await push_tracking_event("clicked", target.email)
-#         await broadcast_stats_snapshot()
-
-#     return RedirectResponse(url=redirect)
-
-
-async def notify_sent(email: str):
-    await push_tracking_event("sent", email)
-    await broadcast_stats_snapshot()
+    if token:
+        res = supabase.table("phishing_targets").select("*").eq("token", token).execute()
+        if res.data:
+            target = res.data[0]
+            if not target["is_aware"]:
+                supabase.table("phishing_targets").update({"is_aware": True}).eq("token", token).execute()
+                await push_tracking_event("aware", target["email"])
+                await broadcast_stats_snapshot()
+                
+            return {"status": "success", "message": "Awareness logged"}
+            
+    return {"status": "ignored", "message": "No valid token found"}
