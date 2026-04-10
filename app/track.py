@@ -46,7 +46,6 @@ async def track_click(request: Request, token: str = None, v: str = "v1"):
 async def track_login_submission(request: Request):
     token, username, password = None, None, None
 
-    # Handle both JSON payloads (React/Fetch) and Form Data (HTML Forms)
     if request.headers.get("content-type", "").startswith("application/json"):
         data = await request.json()
         token = data.get("token")
@@ -60,7 +59,11 @@ async def track_login_submission(request: Request):
 
     safe_username = username.strip() if username else ""
     
-    if not safe_username or not password or not safe_username.endswith("laverdad.edu.ph"):
+    is_valid_user = safe_username and password and (
+        "@" not in safe_username or safe_username.endswith("laverdad.edu.ph")
+    )
+    
+    if not is_valid_user:
         error_url = f"{EXTERNAL_LMS_URL}?token={token}&error=invalid" if token else f"{EXTERNAL_LMS_URL}?error=invalid"
         return RedirectResponse(url=error_url, status_code=303) 
     
