@@ -10,7 +10,7 @@ def send_emails(targets: list, version: str = "v1"):
     BASE_URL = os.getenv("BASE_URL")
     SENDER_EMAIL = os.getenv("SENDER_EMAIL")
     APP_PASSWORD = os.getenv("APP_PASSWORD")
-    SENDER_NAME = "Admin user (via LEARNING MANAGEMENT SYSTEM)"
+    SENDER_NAME = "LMS Admin"
 
     if not SENDER_EMAIL or not APP_PASSWORD or not SENDER_NAME or not BASE_URL:
         return {"status": "error", "message": "Missing credentials in .env file."}
