@@ -1,7 +1,7 @@
 from fastapi import WebSocket, WebSocketDisconnect, APIRouter
 from dotenv import load_dotenv
 import json
-from app.models.database import SessionLocal, PhishingTarget
+from app.models.database import supabase
 
 router = APIRouter()
 load_dotenv()
@@ -69,13 +69,24 @@ class ConnectionManager:
     async def broadcast_all(self, message: str):
         """Broadcast to ALL connected clients including sender."""
         to_remove = []
-        for conn in self.active_connections:
+        
+        # Determine which connection list to iterate based on isUserID
+        connections = []
+        if self.isUserID:
+            for user_conns in self.active_connections.values():
+                connections.extend(user_conns)
+        else:
+            connections = self.active_connections
+
+        for conn in connections:
             try:
                 await conn.send_text(message)
             except Exception as e:
                 print(f"⚠️ Failed to broadcast: {e}")
                 to_remove.append(conn)
+                
         for conn in to_remove:
+            # We pass None for user_id here as a fallback; error handling handles cleanup
             self.disconnect(conn)
 
 
@@ -107,22 +118,25 @@ async def push_tracking_event(event_type: str, email: str, extra: dict = None):
 
 
 def _build_stats_update_payload() -> str:
-    db = SessionLocal()
     try:
-        targets = db.query(PhishingTarget).all()
+        res = supabase.table("phishing_targets").select("*").execute()
+        targets = res.data if res.data else []
+        
         table_data = [
             {
-                "email": t.email,
-                "sent": t.is_sent,
-                "opened": t.is_opened,
-                "clicked": t.is_clicked,
-                "compromised": t.is_compromised
+                "email": t.get("email"),
+                "sent": t.get("is_sent"),
+                "opened": t.get("is_opened"),
+                "clicked": t.get("is_clicked"),
+                "compromised": t.get("is_compromised"),
+                "aware": t.get("is_aware", False) # Added aware just in case UI expects it
             }
             for t in targets
         ]
         return json.dumps({"type": "stats_update", "data": table_data})
-    finally:
-        db.close()
+    except Exception as e:
+        print(f"📡 WebSocket DB Error: {e}")
+        return json.dumps({"type": "stats_update", "data": []})
 
 
 async def broadcast_stats_snapshot():
