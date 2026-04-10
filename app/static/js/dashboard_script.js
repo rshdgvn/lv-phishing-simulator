@@ -1,7 +1,10 @@
-let targets=JSON.parse(localStorage.getItem("lvcc_targets")||"[]");
-let realtimeFetchTimer=null;
+let targets = JSON.parse(localStorage.getItem("lvcc_targets") || "[]");
+let realtimeFetchTimer = null;
+let allTableData = [];
+let currentPage = 1;
+const pageSize = 10; 
 
-function saveTargets(){localStorage.setItem("lvcc_targets",JSON.stringify(targets));}
+function saveTargets() { localStorage.setItem("lvcc_targets", JSON.stringify(targets)); }
 
 async function checkPasscode() {
     const inputField = document.getElementById("passcodeInput");
@@ -44,28 +47,27 @@ async function logout() {
     document.getElementById("loginScreen").style.display = "flex";
 }
 
-
-function addTarget(){
-    const name=document.getElementById("targetName").value.trim();
-    const email=document.getElementById("targetEmail").value.trim();
-    if(!name||!email){alert("Fill in both fields.");return;}
-    targets.push({name,email});
+function addTarget() {
+    const name = document.getElementById("targetName").value.trim();
+    const email = document.getElementById("targetEmail").value.trim();
+    if (!name || !email) { alert("Fill in both fields."); return; }
+    targets.push({ name, email });
     saveTargets();
-    document.getElementById("targetName").value="";
-    document.getElementById("targetEmail").value="";
+    document.getElementById("targetName").value = "";
+    document.getElementById("targetEmail").value = "";
     renderList();
 }
 
-function removeTarget(i){targets.splice(i,1);saveTargets();renderList();}
+function removeTarget(i) { targets.splice(i, 1); saveTargets(); renderList(); }
 
-function renderList(){
-    const list=document.getElementById("targetList");
-    const btn=document.getElementById("sendBtn");
-    if(!targets.length){
-        list.innerHTML='<div class="empty-state"><i class="fas fa-users"></i>No targets added yet.</div>';
-        btn.disabled=true;return;
+function renderList() {
+    const list = document.getElementById("targetList");
+    const btn = document.getElementById("sendBtn");
+    if (!targets.length) {
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i>No targets added yet.</div>';
+        btn.disabled = true; return;
     }
-    list.innerHTML=targets.map((t,i)=>`
+    list.innerHTML = targets.map((t, i) => `
         <div class="target-item">
         <div class="target-info">
             <div class="name">${t.name}</div>
@@ -74,67 +76,104 @@ function renderList(){
         <button class="remove-btn" onclick="removeTarget(${i})"><i class="fas fa-xmark"></i></button>
         </div>
     `).join("");
-    btn.disabled=false;
+    btn.disabled = false;
 }
 
-async function fetchStats(){
-    try{
-        const res=await fetch("/api/stats");
-        const data=await res.json();
-        document.getElementById("statSent").textContent=data.analytics.total_sent;
-        document.getElementById("statClicked").textContent=data.analytics.total_clicked;
-        document.getElementById("statRate").textContent=data.analytics.click_rate;
-        if(document.getElementById("statCompromised"))document.getElementById("statCompromised").textContent=data.analytics.total_compromised ?? "—";
+async function fetchStats() {
+    try {
+        const res = await fetch("/api/stats");
+        const data = await res.json();
         
-        const tbody=document.getElementById("tableBody");
-        if(!data.table.length){
-            tbody.innerHTML='<tr class="empty-row"><td colspan="4"><i class="fas fa-inbox" style="display:block;font-size:22px;margin-bottom:8px;opacity:.2;"></i>No data yet.</td></tr>';
-            return;
-        }
-        tbody.innerHTML=data.table.map(t=>`
+        const totalSent = data.analytics.total_sent || 0;
+        const totalCompromised = data.analytics.total_compromised || 0;
+        
+        document.getElementById("statSent").textContent = totalSent;
+        document.getElementById("statClicked").textContent = data.analytics.total_clicked || 0;
+        document.getElementById("statRate").textContent = data.analytics.click_rate || "0%";
+        document.getElementById("statAttempted").textContent = totalCompromised;
+        
+        const attemptedRate = totalSent > 0 ? ((totalCompromised / totalSent) * 100).toFixed(1) + "%" : "0%";
+        document.getElementById("statAttemptedRate").textContent = attemptedRate;
+
+        allTableData = data.table || [];
+        updateTableUI();
+        
+    } catch (e) { console.error(e); }
+}
+
+function updateTableUI() {
+    const searchInput = document.getElementById("tableSearch").value.toLowerCase();
+    const filterVal = document.getElementById("statusFilter").value;
+
+    let filteredData = allTableData.filter(t => {
+        const matchesSearch = t.email.toLowerCase().includes(searchInput);
+        let matchesFilter = true;
+        
+        if (filterVal === "clicked") matchesFilter = t.clicked;
+        else if (filterVal === "attempted") matchesFilter = t.compromised;
+        else if (filterVal === "both") matchesFilter = t.clicked && t.compromised;
+
+        return matchesSearch && matchesFilter;
+    });
+
+    const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
+    if (currentPage > totalPages) currentPage = totalPages; 
+    
+    const startIndex = (currentPage - 1) * pageSize;
+    const pagedData = filteredData.slice(startIndex, startIndex + pageSize);
+
+    const tbody = document.getElementById("tableBody");
+    if (!pagedData.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="4"><i class="fas fa-inbox" style="display:block;font-size:22px;margin-bottom:8px;opacity:.2;"></i>No matching records found.</td></tr>';
+    } else {
+        tbody.innerHTML = pagedData.map(t => `
          <tr>
             <td>${t.email}</td>
-            <td><span class="tag ${t.sent?'tag-yes':'tag-no'}">${t.sent?'✓ Sent':'–'}</span></td>
-            <!-- <td><span class="tag ${t.opened?'tag-yes':'tag-no'}">${t.opened?'✓ Opened':'–'}</span></td> -->
-            <td><span class="tag ${t.clicked?'tag-click':'tag-no'}">${t.clicked?'✓ Clicked':'–'}</span></td>
-            <td><span class="tag ${t.compromised?'tag-compromised':'tag-no'}">${t.compromised?'⚠ Yes':'–'}</span></td>
+            <td><span class="tag ${t.sent ? 'tag-yes' : 'tag-no'}">${t.sent ? '✓ Sent' : '–'}</span></td>
+            <td><span class="tag ${t.clicked ? 'tag-click' : 'tag-no'}">${t.clicked ? '✓ Clicked' : '–'}</span></td>
+            <td><span class="tag ${t.compromised ? 'tag-attempted' : 'tag-no'}">${t.compromised ? '⚠ Yes' : '–'}</span></td>
         </tr>
         `).join("");
+    }
 
-        filterTable(); 
-        
-    }catch(e){console.error(e);}
+    document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages} (${filteredData.length} records)`;
+    document.getElementById("btnPrev").disabled = currentPage === 1;
+    document.getElementById("btnNext").disabled = currentPage === totalPages || totalPages === 0;
 }
 
-function scheduleStatsRefresh(){
+function changePage(direction) {
+    currentPage += direction;
+    updateTableUI();
+}
+
+function scheduleStatsRefresh() {
     if(realtimeFetchTimer) clearTimeout(realtimeFetchTimer);
-    realtimeFetchTimer=setTimeout(()=>fetchStats(),200);
+    realtimeFetchTimer = setTimeout(() => fetchStats(), 200);
 }
 
-function handleRealtimeMessage(msg){
-    if(!msg||!msg.type) return;
+function handleRealtimeMessage(msg) {
+    if(!msg || !msg.type) return;
     if(["sent","opened","clicked","compromised","stats_update"].includes(msg.type)){
         scheduleStatsRefresh();
     }
 }
 
-function updateLivePillStatus(online){
-    const pill=document.querySelector(".live-pill");
-    const dot=document.querySelector(".live-dot");
-    if(!pill||!dot) return;
-    dot.style.background=online?"#22c55e":"#ef4444";
-    pill.title=online?"Real-time connected":"Reconnecting...";
+function updateLivePillStatus(online) {
+    const pill = document.querySelector(".live-pill");
+    const dot = document.querySelector(".live-dot");
+    if(!pill || !dot) return;
+    dot.style.background = online ? "#22c55e" : "#ef4444";
+    pill.title = online ? "Real-time connected" : "Reconnecting...";
 }
 
-function setupRealtime(){
-    window.addEventListener("lvcc:ws-message",(event)=>handleRealtimeMessage(event.detail));
-    window.addEventListener("lvcc:ws-status",(event)=>updateLivePillStatus(Boolean(event.detail?.online)));
+function setupRealtime() {
+    window.addEventListener("lvcc:ws-message", (event) => handleRealtimeMessage(event.detail));
+    window.addEventListener("lvcc:ws-status", (event) => updateLivePillStatus(Boolean(event.detail?.online)));
 }
 
-async function sendCampaign(){
+async function sendCampaign() {
     if(!targets.length) return;
     const btn = document.getElementById("sendBtn");
-    const selectedVersion = (document.querySelector('input[name="versionSelect"]:checked')||{value:"v1"}).value;
     
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
     btn.disabled = true;
@@ -145,48 +184,34 @@ async function sendCampaign(){
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
                 targets: targets,
-                version: selectedVersion
+                version: "v2" 
             })
         });
         const result = await res.json();
         
-        if(res.ok && result.message.includes("Sent to")){
-            showFeedback("Campaign sent!","var(--success)");
+        if(res.ok && result.message.includes("Sent to")) {
+            showFeedback("Email sent successfully!","var(--success)");
             targets = [];
             saveTargets();
             fetchStats();
         } else {
-            showFeedback(result.message,"var(--danger)");
+            showFeedback(result.message, "var(--danger)");
         }
     } catch {
-        showFeedback("Connection failed.","var(--danger)");
+        showFeedback("Connection failed.", "var(--danger)");
     } finally {
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Simulation';
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Simulation (V2)';
         renderList(); 
     }
 }
 
-
-function filterTable() {
-    const input = document.getElementById("tableSearch").value.toLowerCase();
-    const rows = document.querySelectorAll("#tableBody tr:not(.empty-row)");
-    
-    rows.forEach(row => {
-        const emailCell = row.querySelector("td:first-child"); 
-        if (emailCell) {
-            const emailText = emailCell.textContent.toLowerCase();
-            row.style.display = emailText.includes(input) ? "" : "none";
-        }
-    });
+function showFeedback(msg, color) {
+    const el = document.getElementById("sendFeedback");
+    el.style.color = color; el.textContent = msg; el.style.display = "block";
+    setTimeout(() => el.style.display = "none", 5000);
 }
 
-function showFeedback(msg,color){
-    const el=document.getElementById("sendFeedback");
-    el.style.color=color;el.textContent=msg;el.style.display="block";
-    setTimeout(()=>el.style.display="none",5000);
-}
-
-(async function init(){
+(async function init() {
     setupRealtime();
     renderList();
     

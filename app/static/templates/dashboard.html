@@ -4,19 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ project_name }} — LVCC Phishing Simulator</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/dashboard.css" />
-    <link
-      rel="shortcut icon"
-      href="https://lms.laverdad.edu.ph/pluginfile.php/1/theme_trema/favicon/1760791385/LVCC%20LOGO-NEW%20a.png"
-    />
+    <link rel="shortcut icon" href="https://lms.laverdad.edu.ph/pluginfile.php/1/theme_trema/favicon/1760791385/LVCC%20LOGO-NEW%20a.png" />
     <script src="/static/js/dashboard_script.js" defer></script>
     <script src="/static/js/websocket.js" defer></script>
   </head>
@@ -24,23 +15,14 @@
     <div id="loginScreen">
       <div class="login-wrap">
         <div class="login-logo">
-          <img
-            src="https://lms.laverdad.edu.ph/pluginfile.php/1/core_admin/logo/0x200/1760791385/lvcc_logo.png"
-            alt="LVCC Logo"
-          />
-
+          <img src="https://lms.laverdad.edu.ph/pluginfile.php/1/core_admin/logo/0x200/1760791385/lvcc_logo.png" alt="LVCC Logo" />
           <div style="text-align: center">
             <h1>Phishing Simulator</h1>
             <p>LVCC Cybersecurity Committee</p>
           </div>
         </div>
         <div class="field">
-          <input
-            type="password"
-            id="passcodeInput"
-            placeholder="Passcode"
-            onkeydown="if (event.key === 'Enter') checkPasscode();"
-          />
+          <input type="password" id="passcodeInput" placeholder="Passcode" onkeydown="if (event.key === 'Enter') checkPasscode();" />
           <label>Passcode</label>
         </div>
         <button class="btn btn-primary" onclick="checkPasscode()">
@@ -55,15 +37,10 @@
     <div id="mainDashboard">
       <header class="topbar">
         <div class="topbar-left">
-           <img
-            src="https://lms.laverdad.edu.ph/pluginfile.php/1/core_admin/logo/0x200/1760791385/lvcc_logo.png"
-            alt="LVCC Logo"
-          />
+           <img src="https://lms.laverdad.edu.ph/pluginfile.php/1/core_admin/logo/0x200/1760791385/lvcc_logo.png" alt="LVCC Logo" />
           <div>
             <div class="topbar-title">{{ project_name }}</div>
-            <div class="topbar-sub">
-              Cybersecurity Committee · Simulation Platform
-            </div>
+            <div class="topbar-sub">Cybersecurity Committee · Simulation Platform (V2)</div>
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 10px">
@@ -83,12 +60,7 @@
               <label>Full Name</label>
             </div>
             <div class="field">
-              <input
-                type="email"
-                id="targetEmail"
-                placeholder="Email Address"
-                onkeydown="if (event.key === 'Enter') addTarget();"
-              />
+              <input type="email" id="targetEmail" placeholder="Email Address" onkeydown="if (event.key === 'Enter') addTarget();" />
               <label>Email Address</label>
             </div>
             <button class="btn btn-outline" onclick="addTarget()">
@@ -107,83 +79,64 @@
 
           <div class="divider"></div>
 
-          <div style="margin-bottom: 12px">
-            <div class="sec-label" style="margin-bottom: 8px">
-              Email Version
-            </div>
-            <div class="version-pill-wrap">
-              <input
-                type="radio"
-                name="versionSelect"
-                id="versionV1"
-                value="v1"
-                checked
-              />
-              <label for="versionV1"
-                >V1<br /><span style="font-weight: 400; opacity: 0.75"
-                  >Direct Link</span
-                ></label
-              >
-              <input
-                type="radio"
-                name="versionSelect"
-                id="versionV2"
-                value="v2"
-              />
-              <label for="versionV2"
-                >V2<br /><span style="font-weight: 400; opacity: 0.75"
-                  >Cred Harvest</span
-                ></label
-              >
-            </div>
-          </div>
-
           <button id="sendBtn" class="btn btn-primary" onclick="sendCampaign()">
             <i class="fas fa-paper-plane"></i> Send Simulation
           </button>
+          <div id="sendFeedback"></div>
 
           <div class="info-note">
-            <strong>Authorized drill only.</strong> Operated by the LVCC
-            Cybersecurity Committee for educational phishing awareness.
+            <strong>Authorized drill only.</strong> Operated by the LVCC Cybersecurity Committee for educational phishing awareness.
           </div>
         </aside>
 
         <main class="panel">
-          <div class="stats-row">
-            <div class="stat">
+          <div class="stats-grid">
+            
+            <div class="stat total-sent-card">
               <div class="stat-label">Total Sent</div>
               <div class="stat-val" id="statSent">—</div>
             </div>
-            <!-- Opened stat removed — tracking disabled to avoid misleading data -->
-            <!-- <div class="stat">
-          <div class="stat-label">Opened</div>
-          <div class="stat-val c-blue" id="statOpened">—</div>
-        </div> -->
-            <div class="stat">
-              <div class="stat-label">Compromised</div>
-              <div class="stat-val c-orange" id="statCompromised">—</div>
+
+            <div class="stat combo-stat">
+              <div class="stat-section">
+                <div class="stat-label">Clicked</div>
+                <div class="stat-val c-red" id="statClicked">—</div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-section">
+                <div class="stat-label">Click Rate</div>
+                <div class="stat-val c-orange" id="statRate">—</div>
+              </div>
             </div>
-            <div class="stat">
-              <div class="stat-label">Clicked</div>
-              <div class="stat-val c-red" id="statClicked">—</div>
+
+            <div class="stat combo-stat">
+              <div class="stat-section">
+                <div class="stat-label">Attempted Login</div>
+                <div class="stat-val c-red" id="statAttempted">—</div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-section">
+                <div class="stat-label">Attempted Login Rate</div>
+                <div class="stat-val c-orange" id="statAttemptedRate">—</div>
+              </div>
             </div>
-            <div class="stat">
-              <div class="stat-label">Click Rate</div>
-              <div class="stat-val c-orange" id="statRate">—</div>
-            </div>
+
           </div>
 
           <div class="table-card">
             <div class="table-head">
               <h2>Target Engagement</h2>
-              <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input
-                  type="text"
-                  id="tableSearch"
-                  placeholder="Search email..."
-                  onkeyup="filterTable()"
-                />
+              <div class="table-controls">
+                <select id="statusFilter" class="filter-select" onchange="updateTableUI()">
+                  <option value="all">All Targets</option>
+                  <option value="clicked">Clicked Only</option>
+                  <option value="attempted">Attempted Login Only</option>
+                  <option value="both">Clicked & Attempted</option>
+                </select>
+                <div class="search-box">
+                  <i class="fas fa-search"></i>
+                  <input type="text" id="tableSearch" placeholder="Search email..." onkeyup="updateTableUI()" />
+                </div>
               </div>
             </div>
             <table>
@@ -191,28 +144,28 @@
                 <tr>
                   <th>Email</th>
                   <th>Sent</th>
-                  <!-- <th>Opened</th> -->
                   <th>Clicked</th>
-                  <th>Compromised</th>
+                  <th>Attempted Login</th>
                 </tr>
               </thead>
               <tbody id="tableBody">
                 <tr class="empty-row">
                   <td colspan="4">
-                    <i
-                      class="fas fa-inbox"
-                      style="
-                        display: block;
-                        font-size: 22px;
-                        margin-bottom: 8px;
-                        opacity: 0.2;
-                      "
-                    ></i>
+                    <i class="fas fa-inbox" style="display: block; font-size: 22px; margin-bottom: 8px; opacity: 0.2;"></i>
                     No data yet. Send a simulation to get started.
                   </td>
                 </tr>
               </tbody>
             </table>
+            
+            <div class="pagination-footer">
+              <span id="pageInfo">Page 1 of 1</span>
+              <div class="pagination-btns">
+                <button class="page-btn" id="btnPrev" onclick="changePage(-1)"><i class="fas fa-chevron-left"></i> Prev</button>
+                <button class="page-btn" id="btnNext" onclick="changePage(1)">Next <i class="fas fa-chevron-right"></i></button>
+              </div>
+            </div>
+
           </div>
         </main>
       </div>
